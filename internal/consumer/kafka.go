@@ -20,7 +20,7 @@ type Processor interface {
 }
 
 type KafkaConsumer struct {
-	consumer *kafka.Consumer
+	consumer *kafka.Consume
 	topic    string
 	dlqTopic string
 	config   *config.Config
@@ -28,7 +28,7 @@ type KafkaConsumer struct {
 
 func NewKafkaConsumer(cfg *config.Config) (*KafkaConsumer, error) {
 	configMap := &kafka.ConfigMap{
-		"bootstrap.servers":  cfg.KafkaBootstrapServers,
+		"bootstrap.servers": cfg.KafkaBootstrapServers,
 		"group.id":          cfg.KafkaGroupID,
 		"auto.offset.reset": "earliest",
 	}
@@ -114,4 +114,4 @@ func (k *KafkaConsumer) Close() {
 	if k.consumer != nil {
 		k.consumer.Close()
 	}
-} 
+}
