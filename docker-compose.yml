@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: kafka-setup
+    depends_on:
+      - kafka
+    volumes:
+      - ./kafka-setup.sh:/kafka-setup.sh
+    command: ["/bin/bash", "/kafka-setup.sh"]
+
+  kafka-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kafka-consumer
+    depends_on:
+      - kafka
+      - kafka-setup
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_GROUP_ID=order-processor-group
+      - KAFKA_TOPIC=order-status
+      - KAFKA_TOPIC_DLQ=order-status-dlq
+      - TARGET_SERVICE_URL=http://host.docker.internal:8080/api/v1
+
+  test-producer:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: test-producer
+    depends_on:
+      - kafka
+      - kafka-setup
+    volumes:
+      - ./produce-test-messages.sh:/produce-test-messages.sh
+    command: ["/bin/bash", "/produce-test-messages.sh"] 
